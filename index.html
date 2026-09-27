@@ -421,6 +421,32 @@ window.tbFirebaseSaveLog = async function(log){
 
 <script>
 // Authentication Logic
+function isAfterHours() {
+  const now = new Date();
+  const hours = now.getHours();
+  const minutes = now.getMinutes();
+  // Cerrado desde las 21:30 hasta las 07:00 del día siguiente
+  if (hours > 21 || (hours === 21 && minutes >= 30) || hours < 7) {
+    return true;
+  }
+  return false;
+}
+
+setInterval(() => {
+  const mainContent = document.getElementById("mainContent");
+  if (mainContent && mainContent.style.display === "block" && !window.gerenciaAuth) {
+    if (isAfterHours()) {
+      logoutRecepcion();
+      Swal.fire({
+        icon: 'warning', 
+        title: 'Turno Terminado', 
+        text: 'El sistema de recepción se ha cerrado automáticamente por horario (9:30 PM).', 
+        confirmButtonColor: '#FF2A7A'
+      });
+    }
+  }
+}, 10000); // Check every 10 seconds
+
 function checkLogin() {
   const u = document.getElementById("loginUser").value.trim();
   const p = document.getElementById("loginPass").value.trim();
@@ -429,6 +455,10 @@ function checkLogin() {
   let isGerencia = false;
 
   if(u === "recepcion@totalbeautysalon.com.mx" && p === "TotalBSalon20") {
+    if (isAfterHours()) {
+      Swal.fire({icon: 'error', title: 'Sistema Cerrado', text: 'El turno de recepción ha terminado (9:30 PM a 7:00 AM). Solo el acceso de Gerencia está disponible.', confirmButtonColor: '#FF2A7A'});
+      return;
+    }
     success = true;
   } else if (u === "gerencia@totalbeautysalon.com.mx" && p === "04012021") {
     success = true;
