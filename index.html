@@ -217,7 +217,9 @@ if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId) {
         fbStatus.innerHTML = '⏳ BD: Sincronizando...';
       }
       try {
-        const snap = await get(ref(window.TB_FB.db, 'contacts'));
+        // Timeout for firebase to not hang on "Sincronizando"
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+        const snap = await Promise.race([get(ref(window.TB_FB.db, 'contacts')), timeoutPromise]);
         if (snap.exists()) {
           const data=snap.val()||{};
           contacts=Object.entries(data).map(([id,v])=>({id,...v}));
@@ -261,7 +263,10 @@ window.tbFirebaseSaveLog = async function(log){
       <label>Correo Electrónico</label>
       <input type="email" id="loginUser" placeholder="correo corporativo">
       <label>Contraseña</label>
-      <input type="password" id="loginPass" placeholder="••••••••">
+      <div style="position:relative; width:100%;">
+        <input type="password" id="loginPass" placeholder="••••••••" style="padding-right:45px; width:100%;">
+        <button type="button" id="togglePass" onclick="togglePasswordVisibility()" style="position:absolute; right:5px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--muted); cursor:pointer; font-size:18px; padding:5px; box-shadow:none;">👁️</button>
+      </div>
       <button class="primary" style="width: 100%; margin-top: 20px; padding: 16px; font-size: 16px;" onclick="checkLogin()">Ingresar al CRM</button>
     </div>
   </div>
@@ -429,6 +434,19 @@ window.tbFirebaseSaveLog = async function(log){
 </main>
 
 <script>
+
+function togglePasswordVisibility() {
+  const input = document.getElementById("loginPass");
+  const btn = document.getElementById("togglePass");
+  if (input.type === "password") {
+    input.type = "text";
+    btn.textContent = "🙈";
+  } else {
+    input.type = "password";
+    btn.textContent = "👁️";
+  }
+}
+
 // Authentication Logic
 function isAfterHours() {
   const now = new Date();
@@ -483,21 +501,20 @@ function checkLogin() {
     userName = "Gerencia";
   }
 
-  window.currentUser = { email: u, name: userName };
-  document.getElementById("welcomeUser").textContent = "Hola, " + userName;
-
-    success = true;
-    isGerencia = true;
-  }
-
   if(success) {
+    window.currentUser = { email: u, name: userName };
+    localStorage.setItem('tb_session', JSON.stringify({ email: u, name: userName, isGerencia: isGerencia, time: Date.now() }));
+    const wUser = document.getElementById("welcomeUser");
+    if (wUser) wUser.textContent = "Hola, " + userName;
     document.getElementById("loginOverlay").style.display = "none";
     document.getElementById("mainContent").style.display = "block";
     if (isGerencia) {
       window.gerenciaAuth = true;
       updateGerenciaUI();
-      renderTable();
     }
+    // Update view for the logged in user
+    nextContact();
+    renderTable();
     Swal.fire({
       toast: true, position: 'top-end', icon: 'success',
       title: isGerencia ? 'Sesión de Gerencia iniciada' : 'Sesión iniciada correctamente',
@@ -508,7 +525,7 @@ function checkLogin() {
       icon: 'error',
       title: 'Acceso Denegado',
       text: 'El usuario o la contraseña son incorrectos.',
-      confirmButtonColor: '#b47a8d'
+      confirmButtonColor: '#FF2A7A'
     });
   }
 }
@@ -622,6 +639,7 @@ function updateStats(){
 
 
 function logoutRecepcion() {
+  localStorage.removeItem('tb_session');
   document.getElementById("mainContent").style.display = "none";
   document.getElementById("loginOverlay").style.display = "flex";
   document.getElementById("loginPass").value = "";
@@ -631,7 +649,11 @@ function logoutRecepcion() {
 }
 
 function logoutGerencia() {
+  localStorage.removeItem('tb_session');
   window.gerenciaAuth = false;
+  document.getElementById("mainContent").style.display = "none";
+  document.getElementById("loginOverlay").style.display = "flex";
+  document.getElementById("loginPass").value = "";
   updateGerenciaUI();
   renderTable();
   const activeTab = document.querySelector('.tab.active');
@@ -1025,7 +1047,31 @@ async function showTab(id,btn){
   if(id==="contacts") renderTable();
 }
 
+function restoreSession() {
+  try {
+    const sess = JSON.parse(localStorage.getItem('tb_session'));
+    if (sess) {
+      if (isAfterHours() && !sess.isGerencia) {
+        localStorage.removeItem('tb_session');
+        return;
+      }
+      window.currentUser = { email: sess.email, name: sess.name };
+      if (sess.isGerencia) {
+        window.gerenciaAuth = true;
+        updateGerenciaUI();
+      }
+      const wUser = document.getElementById("welcomeUser");
+      if (wUser) wUser.textContent = "Hola, " + sess.name;
+      document.getElementById("loginOverlay").style.display = "none";
+      document.getElementById("mainContent").style.display = "block";
+      nextContact();
+      renderTable();
+    }
+  } catch(e) {}
+}
+
 fillTemplates();nextContact();renderTable();setInterval(updateTimer,1000);
+restoreSession();
 </script>
 </body>
 </html>
