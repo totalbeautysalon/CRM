@@ -175,7 +175,15 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/12.2.1/firebas
 import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-auth.js";
 import { getDatabase, ref, get, set, push, onValue } from "https://www.gstatic.com/firebasejs/12.2.1/firebase-database.js";
 
-const FIREBASE_CONFIG = window.TB_FIREBASE_CONFIG || null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBlOxvGvw3-KddRfK63EOKhrM4MjA1wpNY",
+  authDomain: "total-beauty-crm.firebaseapp.com",
+  databaseURL: "https://total-beauty-crm-default-rtdb.firebaseio.com",
+  projectId: "total-beauty-crm",
+  storageBucket: "total-beauty-crm.firebasestorage.app",
+  messagingSenderId: "790991554884",
+  appId: "1:790991554884:web:7d52bbc3e4fd1e442d6f11"
+};
 window.TB_FB = { ready:false, app:null, auth:null, db:null, uid:null };
 
 if (FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId) {
@@ -238,7 +246,7 @@ window.tbFirebaseSaveLog = async function(log){
   await set(ref(window.TB_FB.db,'logs/'+key), log);
 };
 </script>
-<script src="firebase-config.js"></script>
+
 </head>
 <body>
 
@@ -265,6 +273,7 @@ window.tbFirebaseSaveLog = async function(log){
     <div>
       <div class="brand">TOTAL BEAUTY</div>
       <div class="sub">CRM de seguimiento · WhatsApp Business</div>
+      <div id="welcomeUser" style="color:var(--accent); font-weight:800; font-size:14px; margin-top:5px; text-transform:uppercase;"></div>
     </div>
   </div>
   <div style="display:flex; gap:10px; align-items:center;">
@@ -347,7 +356,7 @@ window.tbFirebaseSaveLog = async function(log){
     <div class="table-container">
       <table>
         <thead>
-          <tr><th>Cliente</th><th>Teléfono</th><th>Estado</th><th>Plantilla</th><th>Hora</th></tr>
+          <tr><th>Cliente</th><th>Teléfono</th><th>Hora</th><th>Respuesta (Tipificación)</th></tr>
         </thead>
         <tbody id="tableBodyHoy"></tbody>
       </table>
@@ -360,7 +369,7 @@ window.tbFirebaseSaveLog = async function(log){
     <div class="table-container">
       <table>
         <thead>
-          <tr><th>Cliente</th><th>Teléfono</th><th>Estado</th><th>Plantilla</th><th>Último contacto</th></tr>
+          <tr><th>Cliente</th><th>Teléfono</th><th>Usuario</th><th>Fecha/Hora</th><th>Respuesta</th></tr>
         </thead>
         <tbody id="tableBody"></tbody>
       </table>
@@ -448,19 +457,35 @@ setInterval(() => {
 }, 10000); // Check every 10 seconds
 
 function checkLogin() {
-  const u = document.getElementById("loginUser").value.trim();
+  const u = document.getElementById("loginUser").value.trim().toLowerCase();
   const p = document.getElementById("loginPass").value.trim();
   
   let success = false;
   let isGerencia = false;
+  let userName = "";
 
-  if(u === "recepcion@totalbeautysalon.com.mx" && p === "TotalBSalon20") {
+  const users = {
+    "arizbeth@totalbeautysalon.com.mx": { name: "Arisbeth", pass: "LashTb!48" },
+    "kentia@totalbeautysalon.com.mx": { name: "Kentia", pass: "Gl0wPink$2" },
+    "jessica@totalbeautysalon.com.mx": { name: "Jessica", pass: "TBeauty#99" }
+  };
+
+  if(users[u] && p === users[u].pass) {
     if (isAfterHours()) {
       Swal.fire({icon: 'error', title: 'Sistema Cerrado', text: 'El turno de recepción ha terminado (9:30 PM a 7:00 AM). Solo el acceso de Gerencia está disponible.', confirmButtonColor: '#FF2A7A'});
       return;
     }
     success = true;
+    userName = users[u].name;
   } else if (u === "gerencia@totalbeautysalon.com.mx" && p === "04012021") {
+    success = true;
+    isGerencia = true;
+    userName = "Gerencia";
+  }
+
+  window.currentUser = { email: u, name: userName };
+  document.getElementById("welcomeUser").textContent = "Hola, " + userName;
+
     success = true;
     isGerencia = true;
   }
@@ -491,7 +516,7 @@ function checkLogin() {
 // Data and Templates
 const TEMPLATES = [
 ["1 · Regreso al salón","Hola, {nombre}. En Total Beauty queremos invitarte a volver a consentirte. Tenemos servicios de cabello, uñas, pestañas, cejas y maquillaje para que puedas renovar tu look en un solo lugar. 💇‍♀️💅✨ Además, ya contamos con nuestro nuevo programa Beneficios VIP: cada servicio que realizas te otorga puntos que podrás canjear por otros servicios dentro del salón. ⭐🎁 ¿Te gustaría agendar tu próxima cita?"],
-["2 · Novedad VIP","Hola, {nombre}. Tenemos una novedad para ti en Total Beauty. Ahora tus visitas pueden convertirse en beneficios con nuestro nuevo programa Beneficios VIP. ⭐ Acumula puntos con tus servicios y después cámbialos por otros servicios del salón. Puedes elegir entre cabello, uñas, pestañas, cejas, maquillaje y más. 💇‍♀️💅👁️✨ Escríbenos para conocer disponibilidad y agendar."],
+["2 · Martes de Pestañas (con VIP)","Hola, {nombre}. ✨ ¡Despierta lista y con una mirada de impacto todos los días!\n\nLlegó el Martes de Pestañas a Total Beauty 💖. Dale a tus ojos ese toque elegante y natural con nuestra Técnica Clásica de Extensiones.\n\n🔥 ¡PROMO EXCLUSIVA! Precio normal $599 ❌ ➡ Martes de Promo a solo $399 ✅ (iniciamos agenda a las 9:00 AM).\n\n⚠️ Cupo súper limitado: Válido únicamente para las primeras 3 personas en confirmar su cita.\n\n⭐ Además, recuerda que este servicio te suma puntos en nuestro programa Beneficios VIP. ¡Acumula y cámbialos por servicios gratis en el salón! 🎁\n\n📍 Visítanos en: 1.º de Mayo 2, III Demarcación, Tepatepec.\n🗺️ Cómo llegar: https://maps.app.goo.gl/atFkyWvZT9fuhfKCA\n\n📲 ¿Te apartamos tu lugar antes de que se llenen los 3 espacios? ¡Mándanos mensajito para confirmar!"],
 ["3 · Belleza completa","Hola, {nombre}. ¿Ya pensaste en tu próximo cambio de look? En Total Beauty puedes encontrar cabello, cortes, peinados y tratamientos; además de uñas, pestañas, cejas y maquillaje. 💇‍♀️💅👁️💄 Y ahora cada servicio también suma puntos para nuestro programa Beneficios VIP, que podrás utilizar para obtener otros servicios dentro del salón. ⭐ ¿Te apartamos un espacio?"],
 ["4 · Experiencia VIP","Hola, {nombre}. Queremos que tu próxima visita a Total Beauty tenga todavía más beneficios. ⭐ Con nuestro nuevo programa Beneficios VIP acumulas puntos cada vez que realizas un servicio y puedes canjearlos por otros servicios dentro del salón. Tenemos opciones de cabello, uñas, pestañas, cejas, maquillaje y tratamientos. ✨ ¿Qué te gustaría hacerte en tu próxima visita?"],
 ["5 · Renovación","Hola, {nombre}. A veces un pequeño cambio hace toda la diferencia. ✨ En Total Beauty puedes renovar cabello, uñas, pestañas, cejas y maquillaje, con diferentes servicios para completar tu look. Además, ahora tus servicios generan puntos con Beneficios VIP para que posteriormente puedas canjearlos por otros servicios. ⭐🎁 ¿Quieres que revisemos horarios disponibles?"],
@@ -568,7 +593,7 @@ function openWhatsApp(){
    return;
  }
  window.open("https://wa.me/"+phone+"?text="+encodeURIComponent(msg),"_blank");
- c.status="sent"; c.template=TEMPLATES[i][0]; c.lastContact=new Date().toISOString(); c.noContact=false;
+ c.status="sent"; c.template=TEMPLATES[i][0]; c.lastContact=new Date().toISOString(); c.noContact=false; c.sentBy = window.currentUser.name;
  logs.push({contactId:c.id,time:Date.now(),template:TEMPLATES[i][0]});
  cooldownUntil=Date.now()+300000; // 5 mins
  save(); 
@@ -639,27 +664,98 @@ function renderTable() {
   document.getElementById("tableBody").innerHTML = rows.map(c => {
     const displayPhone = isGerencia ? c.telefono : "••••••" + String(c.telefono).slice(-4);
     const phoneHtml = isGerencia ? escapeHtml(displayPhone) : `<span onclick="unlockPhone()" style="cursor:pointer; color:var(--accent); text-decoration:underline;" title="Click para desbloquear">${escapeHtml(displayPhone)}</span>`;
-    
-    return `<tr><td><b>${escapeHtml(c.nombre||"Sin nombre")}</b></td><td>${phoneHtml}</td><td><span class="pill ${c.noContact?"blocked":c.status==="sent"?"sent":"pending"}">${c.noContact?"NO CONTACTAR":c.status==="sent"?"CONTACTADA":"PENDIENTE"}</span></td><td><span style="font-size:12px; color:#777;">${escapeHtml(c.template||"——")}</span></td><td>${c.lastContact?new Date(c.lastContact).toLocaleString("es-MX", {dateStyle:'short', timeStyle:'short'}):"——"}</td></tr>`;
+    const tip = c.tipificacion ? `<b style="color:#000;">${c.tipificacion}</b><br><span style="font-size:11px; color:#555;">${c.tipificacionText}</span>` : `<span style="color:#aaa; font-style:italic;">--</span>`;
+    const userBadge = c.sentBy ? `<span style="background:#eee; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold; color:#333;">${c.sentBy}</span>` : '--';
+
+    return `<tr><td><b>${escapeHtml(c.nombre||"Sin nombre")}</b></td><td>${phoneHtml}</td><td>${userBadge}</td><td>${c.lastContact?new Date(c.lastContact).toLocaleString("es-MX", {dateStyle:'short', timeStyle:'short'}):"——"}</td><td>${tip}</td></tr>`;
   }).join("");
 
   // Render Today's Table
   const todayStr = new Date().toLocaleDateString("es-MX");
-  const rowsHoy = contacts.filter(c => c.lastContact && new Date(c.lastContact).toLocaleDateString("es-MX") === todayStr);
+  // If gerencia, show all today's contacts. If user, show only theirs.
+  const rowsHoy = contacts.filter(c => {
+    if (!c.lastContact) return false;
+    if (new Date(c.lastContact).toLocaleDateString("es-MX") !== todayStr) return false;
+    if (!isGerencia && c.sentBy !== window.currentUser?.name) return false;
+    return true;
+  });
   
   if(rowsHoy.length === 0) {
-    document.getElementById("tableBodyHoy").innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No se han contactado clientas el día de hoy.</td></tr>`;
+    document.getElementById("tableBodyHoy").innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No has enviado mensajes el día de hoy.</td></tr>`;
   } else {
     document.getElementById("tableBodyHoy").innerHTML = rowsHoy.map(c => {
       const displayPhone = isGerencia ? c.telefono : "••••••" + String(c.telefono).slice(-4);
       const phoneHtml = isGerencia ? escapeHtml(displayPhone) : `<span onclick="unlockPhone()" style="cursor:pointer; color:var(--accent); text-decoration:underline;">${escapeHtml(displayPhone)}</span>`;
       
-      return `<tr><td><b>${escapeHtml(c.nombre||"Sin nombre")}</b></td><td>${phoneHtml}</td><td><span class="pill sent">CONTACTADA</span></td><td><span style="font-size:12px; color:#777;">${escapeHtml(c.template||"——")}</span></td><td>${new Date(c.lastContact).toLocaleTimeString("es-MX", {timeStyle:'short'})}</td></tr>`;
+      const tip = c.tipificacion ? `<b style="color:#000;">${c.tipificacion}</b><br><span style="font-size:11px; color:#555;">${c.tipificacionText}</span>` : `<span style="color:#aaa; font-style:italic;">Pendiente...</span>`;
+
+      return `<tr><td><b>${escapeHtml(c.nombre||"Sin nombre")}</b></td><td>${phoneHtml}</td><td>${new Date(c.lastContact).toLocaleTimeString("es-MX", {timeStyle:'short'})}</td><td>${tip}</td></tr>`;
     }).join("");
   }
 }
-
 async function guardarCapturaHoy() {
+  const isGerencia = window.gerenciaAuth === true;
+  const todayStr = new Date().toLocaleDateString("es-MX");
+  const rowsHoy = contacts.filter(c => {
+    if (!c.lastContact) return false;
+    if (new Date(c.lastContact).toLocaleDateString("es-MX") !== todayStr) return false;
+    if (!isGerencia && c.sentBy !== window.currentUser?.name) return false;
+    return true;
+  });
+  
+  if(rowsHoy.length === 0) {
+    Swal.fire({icon: 'info', title: 'Sin envíos', text: 'No hay mensajes registrados hoy para capturar.', confirmButtonColor: '#FF2A7A'});
+    return;
+  }
+  
+  for(let i=0; i<rowsHoy.length; i++) {
+    let c = rowsHoy[i];
+    if(!c.tipificacion || !c.tipificacionText) {
+      const { value: formValues } = await Swal.fire({
+        title: 'Clasificar Respuesta',
+        html: `
+          <div style="background:#f8f9fa; padding:15px; border-radius:10px; margin-bottom:15px;">
+            <p style="font-size:15px; color:#111; margin:0 0 5px;">Clienta: <b>${c.nombre}</b></p>
+            <p style="font-size:13px; color:#555; margin:0;">Tel: ${c.telefono}</p>
+          </div>
+          <select id="swal-tip1" class="swal2-input" style="width:90%; font-size:15px; margin-bottom:15px; height:auto; padding:12px;">
+            <option value="">-- ¿Qué respondió? --</option>
+            <option value="Agendó Cita">Agendó Cita 📅</option>
+            <option value="Le interesa / Más adelante">Le interesa / Más adelante ⏳</option>
+            <option value="No le interesa">No le interesa 🚫</option>
+            <option value="No contestó">Aún no contesta 💤</option>
+            <option value="Número Equivocado">Número Equivocado ❌</option>
+          </select>
+          <textarea id="swal-tip2" class="swal2-textarea" placeholder="Escribe un breve detalle de la conversación..." style="width:90%; font-size:14px; min-height:80px;"></textarea>
+        `,
+        focusConfirm: false,
+        confirmButtonText: 'Guardar',
+        confirmButtonColor: '#FF2A7A',
+        allowOutsideClick: false,
+        preConfirm: () => {
+          const t1 = document.getElementById('swal-tip1').value;
+          const t2 = document.getElementById('swal-tip2').value.trim();
+          if(!t1 || !t2) {
+            Swal.showValidationMessage('Debes seleccionar una opción y escribir un comentario obligatoriamente.');
+            return false;
+          }
+          return { option: t1, comment: t2 };
+        }
+      });
+      
+      if(formValues) {
+        c.tipificacion = formValues.option;
+        c.tipificacionText = formValues.comment;
+        if(window.tbFirebaseSaveContact) window.tbFirebaseSaveContact(c).catch(console.error);
+        save();
+        renderTable(); // Update visually as they fill them out
+      } else {
+        // Cancelado u omitido
+        return; 
+      }
+    }
+  }
+  
   const el = document.getElementById("captureArea");
   if(!el) return;
   
@@ -673,17 +769,16 @@ async function guardarCapturaHoy() {
     const canvas = await html2canvas(el, { backgroundColor: '#ffffff', scale: 2 });
     const imgData = canvas.toDataURL('image/png');
     const link = document.createElement('a');
-    link.download = `Contactos_Hoy_${new Date().toLocaleDateString("es-MX").replace(/\//g,'-')}.png`;
+    const userName = window.currentUser?.name || "Gerencia";
+    link.download = `Reporte_${userName}_${new Date().toLocaleDateString("es-MX").replace(/\//g,'-')}.png`;
     link.href = imgData;
     link.click();
-    Swal.fire({icon:'success', title:'Captura guardada', confirmButtonColor:'#349670'});
+    Swal.fire({icon:'success', title:'Captura guardada', confirmButtonColor:'#10B981'});
   } catch(e) {
     console.error(e);
-    Swal.fire({icon:'error', title:'Error al generar captura', confirmButtonColor:'#d9534f'});
+    Swal.fire({icon:'error', title:'Error al generar captura', confirmButtonColor:'#EF4444'});
   }
 }
-
-// Override authGerencia to update UI
 const originalAuthGerencia = authGerencia;
 authGerencia = async function() {
   if (window.gerenciaAuth) return true;
